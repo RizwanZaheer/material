@@ -82,42 +82,57 @@
       element.prepend('<div class="md-css-variables"></div>');
     }
 
-    function FabSpeedDialController($scope, $element, $animate, $mdUtil) {
+    function FabSpeedDialController($scope, $element, $animate, $mdUtil, $timeout) {
       var vm = this;
 
-      // Define our open/close functions
-      // Note: Used by fabTrigger and fabActions directives
+      // Create a flag to track if we recently gained focus. This is necessary because when the
+      // trigger is clicked, it fires both the focus and click events which was immediately closing
+      // the speed dial.
+      var recentlyFocused = false;
+
+      // NOTE: We use async evals below to avoid conflicts with any existing digest loops
+
       vm.open = function() {
-        // Async eval to avoid conflicts with existing digest loops
         $scope.$evalAsync("vm.isOpen = true");
       };
 
       vm.close = function() {
         // Async eval to avoid conflicts with existing digest loops
-        // Only close if we do not currently have mouse focus (since child elements can call this)
-        !vm.moused && $scope.$evalAsync("vm.isOpen = false");
+        $scope.$evalAsync("vm.isOpen = false");
       };
 
-      vm.mouseenter = function() {
-        vm.moused = true;
+      // Toggle the open/close state when the trigger is clicked
+      vm.toggle = function() {
+        // Don't allow closing if we were very recently focused
+        if (!recentlyFocused) {
+          $scope.$evalAsync("vm.isOpen = !vm.isOpen");
+        }
+      };
+
+      // Always open when any speed dial child fires focusin (via mouse or keyboard).
+      vm.focusin = function() {
+        recentlyFocused = true;
+
+        // After a short delay, reset our recentlyFocused flag
+        $timeout(function() {
+          recentlyFocused = false;
+        }, 500);
+
+        // Open
         vm.open();
       };
 
-      vm.mouseleave = function() {
-        vm.moused = false;
+      // Always close if any child fires focusout (if something else immediately fires focusin, it
+      // will immediately reopen the component)
+      vm.focusout = function() {
         vm.close();
       };
 
       setupDefaults();
       setupListeners();
       setupWatchers();
+      fireInitialAnimations();
 
-      // Fire the animations once in a separate digest loop to initialize them
-      $mdUtil.nextTick(function() {
-        $animate.addClass($element, 'md-noop');
-      });
-
-      // Set our default variables
       function setupDefaults() {
         // Set the default direction to 'down' if none is specified
         vm.direction = vm.direction || 'down';
@@ -126,13 +141,19 @@
         vm.isOpen = vm.isOpen || false;
       }
 
-      // Setup our event listeners
       function setupListeners() {
-        $element.on('mouseenter', vm.mouseenter);
-        $element.on('mouseleave', vm.mouseleave);
+        $element.on('focusin', vm.focusin);
+        $element.on('focusout', vm.focusout);
+
+        // Make sure to destroy any listeners
+        $scope.$on('$destroy', destroyListeners);
       }
 
-      // Setup our watchers
+      function destroyListeners() {
+        $element.off('focusin', vm.focusin);
+        $element.off('focusout', vm.focusout);
+      }
+
       function setupWatchers() {
         // Watch for changes to the direction and update classes/attributes
         $scope.$watch('vm.direction', function(newDir, oldDir) {
@@ -147,7 +168,22 @@
           var toAdd = isOpen ? 'md-is-open' : '';
           var toRemove = isOpen ? '' : 'md-is-open';
 
+          // Animate the CSS classes
           $animate.setClass($element, toAdd, toRemove);
+
+          // Focus the trigger child so keyboard interaction works as expected
+          if (isOpen) {
+            var triggerChild = $element.find('md-fab-trigger').children()[0];
+
+            triggerChild.focus();
+          }
+        });
+      }
+
+      // Fire the animations once in a separate digest loop to initialize them
+      function fireInitialAnimations() {
+        $mdUtil.nextTick(function() {
+          $animate.addClass($element, 'md-noop');
         });
       }
     }
@@ -238,7 +274,7 @@
 
         styles.opacity = ctrl.isOpen ? 1 : 0;
         styles.transform = styles.webkitTransform = ctrl.isOpen ? 'scale(1)' : 'scale(0)';
-        styles.transitionDelay = (ctrl.isOpen ?  offsetDelay : (items.length - offsetDelay)) + 'ms';
+        styles.transitionDelay = (ctrl.isOpen ? offsetDelay : (items.length - offsetDelay)) + 'ms';
       });
     }
 

@@ -28,28 +28,17 @@ describe('<md-fab-speed-dial> directive', function () {
     expect(element.hasClass('md-right')).toBe(true);
   }));
 
-  it('opens when the trigger element is focused', inject(function () {
+  it('opens when a child element fires focusin', inject(function () {
     build(
       '<md-fab-speed-dial><md-fab-trigger><button></button></md-fab-trigger></md-fab-speed-dial>'
     );
 
-    element.find('button').triggerHandler('focus');
+    element.triggerHandler('focusin');
     pageScope.$digest();
     expect(controller.isOpen).toBe(true);
   }));
 
-  it('opens when the speed dial elements are focused', inject(function () {
-    build(
-      '<md-fab-speed-dial><md-fab-actions><button></button></md-fab-actions></md-fab-speed-dial>'
-    );
-
-    element.find('button').triggerHandler('focus');
-    pageScope.$digest();
-
-    expect(controller.isOpen).toBe(true);
-  }));
-
-  it('closes when the speed dial elements are blurred', inject(function () {
+  it('closes when a child element fires focusout', inject(function () {
     build(
       '<md-fab-speed-dial>'+
       ' <md-fab-trigger>' +
@@ -62,15 +51,14 @@ describe('<md-fab-speed-dial> directive', function () {
       '</md-fab-speed-dial>'
     );
 
-    element.find('button').triggerHandler('focus');
+    element.triggerHandler('focusin');
     pageScope.$digest();
 
     expect(controller.isOpen).toBe(true);
 
-    var actionBtn = element.find('md-fab-actions').find('button');
-    actionBtn.triggerHandler('focus');
+    element.triggerHandler('focusin');
     pageScope.$digest();
-    actionBtn.triggerHandler('blur');
+    element.triggerHandler('focusout');
     pageScope.$digest();
 
     expect(controller.isOpen).toBe(false);
@@ -78,7 +66,11 @@ describe('<md-fab-speed-dial> directive', function () {
 
   it('allows programmatic opening through the md-open attribute', inject(function () {
     build(
-      '<md-fab-speed-dial md-open="isOpen"></md-fab-speed-dial>'
+      '<md-fab-speed-dial md-open="isOpen">' +
+      '  <md-fab-trigger>' +
+      '    <md-button></md-button>' +
+      '  </md-fab-trigger>' +
+      '</md-fab-speed-dial>'
     );
 
     // By default, it should be closed

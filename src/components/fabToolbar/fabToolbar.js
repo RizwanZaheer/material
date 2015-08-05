@@ -57,10 +57,9 @@
     return {
       restrict: 'E',
       transclude: true,
-      template:
-        '<div class="md-fab-toolbar-wrapper">' +
-        '  <div class="md-fab-toolbar-content" ng-transclude></div>' +
-        '</div>',
+      template: '<div class="md-fab-toolbar-wrapper">' +
+      '  <div class="md-fab-toolbar-content" ng-transclude></div>' +
+      '</div>',
 
       scope: {
         isOpen: '=?mdOpen'
@@ -73,37 +72,91 @@
       link: link
     };
 
-    function FabToolbarController($scope, $element, $animate) {
+    function FabToolbarController($scope, $element, $animate, $mdUtil, $timeout) {
       var vm = this;
 
-      // Set the default to be closed
-      vm.isOpen = vm.isOpen || false;
+      // Create a flag to track if we recently gained focus. This is necessary because when the
+      // trigger is clicked, it fires both the focus and click events which was immediately closing
+      // the speed dial.
+      var recentlyFocused = false;
+
+      // NOTE: We use async evals below to avoid conflicts with any existing digest loops
 
       vm.open = function() {
-        vm.isOpen = true;
-        $scope.$apply();
+        $scope.$evalAsync("vm.isOpen = true");
       };
 
       vm.close = function() {
-        vm.isOpen = false;
-        $scope.$apply();
+        // Async eval to avoid conflicts with existing digest loops
+        $scope.$evalAsync("vm.isOpen = false");
       };
 
-      // Add our class so we can trigger the animation on start
-      $element.addClass('md-fab-toolbar');
+      // Toggle the open/close state when the trigger is clicked
+      vm.toggle = function() {
+        // Don't allow closing if we were very recently focused
+        if (!recentlyFocused) {
+          $scope.$evalAsync("vm.isOpen = !vm.isOpen");
+        }
+      };
 
-      // Setup some mouse events so the hover effect can be triggered
-      // anywhere over the toolbar
-      $element.on('mouseenter', vm.open);
-      $element.on('mouseleave', vm.close);
+      // Always open when any speed dial child fires focusin (via mouse or keyboard).
+      vm.focusin = function() {
+        recentlyFocused = true;
 
-      // Watch for changes to md-open and toggle our class
-      $scope.$watch('vm.isOpen', function(isOpen) {
-        var toAdd = isOpen ? 'md-is-open' : '';
-        var toRemove = isOpen ? '' : 'md-is-open';
+        // After a short delay, reset our recentlyFocused flag
+        $timeout(function() {
+          recentlyFocused = false;
+        }, 500);
 
-        $animate.setClass($element, toAdd, toRemove);
-      });
+        // Open
+        vm.open();
+      };
+
+      // Always close if any child fires focusout (if something else immediately fires focusin, it
+      // will immediately reopen the component)
+      vm.focusout = function() {
+        vm.close();
+      };
+
+      setupDefaults();
+      setupListeners();
+      setupWatchers();
+      fireInitialAnimations();
+
+      function setupDefaults() {
+        // Set the default to be closed
+        vm.isOpen = vm.isOpen || false;
+      }
+
+      function setupListeners() {
+        $element.on('focusin', vm.focusin);
+        $element.on('focusout', vm.focusout);
+
+        // Make sure to destroy any listeners
+        $scope.$on('$destroy', destroyListeners);
+      }
+
+      function destroyListeners() {
+        $element.off('focusin', vm.focusin);
+        $element.off('focusout', vm.focusout);
+      }
+
+      function setupWatchers() {
+        // Watch for changes to md-open and toggle our class
+        $scope.$watch('vm.isOpen', function(isOpen) {
+          var toAdd = isOpen ? 'md-is-open' : '';
+          var toRemove = isOpen ? '' : 'md-is-open';
+
+          $animate.setClass($element, toAdd, toRemove);
+        });
+      }
+
+      // Fire the animations once in a separate digest loop to initialize them
+      function fireInitialAnimations() {
+        $mdUtil.nextTick(function() {
+          $animate.addClass($element, 'md-fab-toolbar');
+        });
+      }
     }
 
     function link(scope, element, attributes) {
@@ -126,6 +179,7 @@
       // Grab the relevant child elements
       var backgroundElement = el.querySelector('.md-fab-toolbar-background');
       var triggerElement = el.querySelector('md-fab-trigger button');
+      var toolbarElement = el.querySelector('md-toolbar');
       var iconElement = el.querySelector('md-fab-trigger button md-icon');
       var actions = element.find('md-fab-actions').children();
 

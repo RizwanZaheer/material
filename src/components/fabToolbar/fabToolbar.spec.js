@@ -29,7 +29,8 @@ describe('<md-fab-toolbar> directive', function() {
       '<md-fab-actions><button></button></md-fab-actions></md-fab-toolbar>'
     );
 
-    element.find('button').triggerHandler('focus');
+    element.triggerHandler('focusin');
+    pageScope.$digest();
     expect(controller.isOpen).toBe(true);
   }));
 
@@ -38,10 +39,12 @@ describe('<md-fab-toolbar> directive', function() {
       '<md-fab-toolbar><md-fab-actions><button></button></md-fab-actions></md-fab-toolbar>'
     );
 
-    element.find('button').triggerHandler('focus');
+    element.triggerHandler('focusin');
+    pageScope.$digest();
     expect(controller.isOpen).toBe(true);
 
-    element.find('button').triggerHandler('blur');
+    element.triggerHandler('focusout');
+    pageScope.$digest();
     expect(controller.isOpen).toBe(false);
   }));
 
