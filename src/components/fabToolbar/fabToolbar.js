@@ -75,6 +75,14 @@
     function FabToolbarController($scope, $element, $animate, $mdUtil, $timeout) {
       var vm = this;
 
+      // TODO: Most of the following code is copy/pasted from FABSpeedDial. Need to refactor.
+      //
+      // I currently see 3 possible solutions to this issue:
+      //
+      //   1. Create/utilize a service
+      //   2. Inherit/extend/use a common controller
+      //   3. [Ideal?] Merge both components into a single <md-fab type="toolbar"> component
+
       // Create a flag to track if we recently gained focus. This is necessary because when the
       // trigger is clicked, it fires both the focus and click events which was immediately closing
       // the speed dial.
@@ -170,9 +178,13 @@
   }
 
   function MdFabToolbarAnimation() {
-    var originalIconDelay;
 
     function runAnimation(element, className, done) {
+      // If no className was specified, don't do anything
+      if (!className) {
+        return;
+      }
+
       var el = element[0];
       var ctrl = element.controller('mdFabToolbar');
 
@@ -199,6 +211,8 @@
 
         // If we're open
         if (ctrl.isOpen) {
+          // Turn on toolbar pointer events when closed
+          toolbarElement.style.pointerEvents = 'initial';
 
           // Set the width/height to take up the full toolbar width
           backgroundElement.style.width = scale + 'px';
@@ -226,6 +240,9 @@
             action.style.transitionDelay = (actions.length - index) * 25 + 'ms';
           });
         } else {
+          // Turn off toolbar pointer events when closed
+          toolbarElement.style.pointerEvents = 'none';
+
           // Otherwise, set the width/height to the trigger's width/height
           backgroundElement.style.width = triggerElement.offsetWidth + 'px';
           backgroundElement.style.height = triggerElement.offsetHeight + 'px';
@@ -249,7 +266,7 @@
 
           // Apply a transition delay to actions
           angular.forEach(actions, function(action, index) {
-            action.style.transitionDelay = (index * 25) + 'ms';
+            action.style.transitionDelay = 200 + (index * 25) + 'ms';
           });
         }
       }
