@@ -135,12 +135,11 @@ if (angular.version.minor >= 4) {
     return AnimateRunner;
   }];
 
-  angular.module('material.animate', [])
-
+  angular
+    .module('material.animate', [])
     .factory('$$forceReflow', $$ForceReflowFactory)
     .factory('$$AnimateRunner', $$AnimateRunnerFactory)
     .factory('$$rAFMutex', $$rAFMutexFactory)
-
     .factory('$animateCss', ['$window', '$$rAF', '$$AnimateRunner', '$$forceReflow', '$$jqLite', '$timeout',
                      function($window,   $$rAF,   $$AnimateRunner,   $$forceReflow,   $$jqLite,   $timeout) {
 
@@ -189,7 +188,7 @@ if (angular.version.minor >= 4) {
               forEach(temporaryStyles, function(entry) {
                 var key = entry[0];
                 var value = entry[1];
-                node.style[key] = value;
+                node.style[camelCase(key)] = value;
               });
 
               applyClasses(element, options);
@@ -221,7 +220,7 @@ if (angular.version.minor >= 4) {
               forEach(moreStyles, function(entry) {
                 var key = entry[0];
                 var value = entry[1];
-                node.style[key] = value;
+                node.style[camelCase(key)] = value;
                 temporaryStyles.push(entry);
               });
 
@@ -267,7 +266,7 @@ if (angular.version.minor >= 4) {
               applyClasses(element, options);
               applyAnimationStyles(element, options);
               forEach(temporaryStyles, function(entry) {
-                node.style[entry[0]] = '';
+                node.style[camelCase(entry[0])] = '';
               });
               runner.complete(true);
               return runner;
@@ -379,11 +378,24 @@ if (angular.version.minor >= 4) {
 
       function blockTransition(element, bool) {
         var node = getDomNode(element);
-        node.style[PREFIX + 'transition-delay'] = bool ? '-9999s' : '';
+        var key = camelCase(PREFIX + 'transition-delay');
+        node.style[key] = bool ? '-9999s' : '';
       }
 
       return init;
     }]);
+
+  /**
+   * Older browsers [FF31] expect camelCase
+   * property keys.
+   * e.g.
+   *  animation-duration --> animationDuration
+   */
+  function camelCase(str) {
+    return str.replace(/-[a-z]/g, function(str) {
+      return str.charAt(1).toUpperCase();
+    });
+  }
 
 })();
 

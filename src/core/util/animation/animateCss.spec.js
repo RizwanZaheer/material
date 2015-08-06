@@ -3,31 +3,11 @@ describe('$animateCss', function() {
   var jqLite = angular.element;
   var forEach = angular.forEach;
 
-  beforeEach(module('material.animate'));
-
-  function assertHasClass(element, className, not) {
-    expect(element.hasClass(className)).toBe(!not);
-  }
-
-  function assertStyle(element, prop, val, not) {
-    var node = element[0];
-    var webKit = '-webkit-';
-    if (typeof prop === 'string') {
-      if ( !node.style[prop] ) prop = webKit+prop;
-      var assertion = expect(node.style[prop]);
-      not ? assertion.not.toBe(val) : assertion.toBe(val);
-    } else {
-      for (var key in prop) {
-        var val = prop[key];
-        var assertion = expect(node.style[key] || node.style[webKit+key]);
-        not ? assertion.not.toBe(val) : assertion.toBe(val);
-      }
-    }
-  }
-
   var fromStyles, toStyles, addClassVal = 'to-add', removeClassVal = 'to-remove';
   var element, ss, doneSpy;
   var triggerAnimationStartFrame, moveAnimationClock;
+
+  beforeEach(module('material.animate'));
 
   beforeEach(module(function() {
     return function($window, $document, $$rAF, $timeout, $rootElement) {
@@ -448,4 +428,30 @@ describe('$animateCss', function() {
       assertStyle(element, 'animation-duration', '2s');
     }));
   });
+
+  function assertHasClass(element, className, not) {
+    expect(element.hasClass(className)).toBe(!not);
+  }
+
+  function assertStyle(element, prop, val, not) {
+    var node = element[0];
+    var webKit = '-webkit-';
+    if (typeof prop === 'string') {
+      var assertion = expect(node.style[camelCase(prop)] || node.style[camelCase(webKit+prop)]);
+      not ? assertion.not.toBe(val) : assertion.toBe(val);
+    } else {
+      for (var key in prop) {
+        var val = prop[key];
+        var assertion = expect(node.style[camelCase(key)] || node.style[camelCase(webKit+key)]);
+        not ? assertion.not.toBe(val) : assertion.toBe(val);
+      }
+    }
+  }
+
+  function camelCase(str) {
+    return str.replace(/-[a-z]/g, function(str) {
+      return str.charAt(1).toUpperCase();
+    });
+  }
+
 });
